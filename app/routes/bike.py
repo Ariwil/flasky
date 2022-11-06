@@ -14,24 +14,24 @@ bike_bp = Blueprint("bike_bp", __name__, url_prefix="/bike") #don't need to unde
 # #dont need to understand the "bike_bp" specifically, just something python keeps track of, doesn't need to be the same name as the variable either (even though they have the same name here)
 
 #helper fxn - don't need decorator bc we don't want client to directly access this
-def get_one_bike_or_abort(bike_id):
-    #see if bike_id can be converted to an integer
-    #try-except: try to convert to an int, if error occurs, catch it and raise 400 error with message
-    try:
-        bike_id = int(bike_id)
-    except ValueError:
-        response_str = f"Invalid bike_id: `{bike_id}`. ID must be an integer"
-        #want to raise abort here instead of the return value. Abort needs to be imported
-        abort(make_response(jsonify({"message":response_str}), 400))
-    #     return jsonify({"message": response_str}), 400
-    # #after the try-except: bike_id will be a valid int
-    matching_bike = Bike.query.get(bike_id) #returns None if no matching bike_id
+# def get_one_bike_or_abort(bike_id):
+#     #see if bike_id can be converted to an integer
+#     #try-except: try to convert to an int, if error occurs, catch it and raise 400 error with message
+#     try:
+#         bike_id = int(bike_id)
+#     except ValueError:
+#         response_str = f"Invalid bike_id: `{bike_id}`. ID must be an integer"
+#         #want to raise abort here instead of the return value. Abort needs to be imported
+#         abort(make_response(jsonify({"message":response_str}), 400))
+#     #     return jsonify({"message": response_str}), 400
+#     # #after the try-except: bike_id will be a valid int
+#     matching_bike = Bike.query.get(bike_id) #returns None if no matching bike_id
 
-    if matching_bike is None:
-        response_str = f"Bike with id '{bike_id}' was not found in database"
-        abort(make_response(jsonify({"message":response_str}), 404)) #jsonify is just taking something and converting it into JSON. Make response can be sometihng much larger- returning something under a decorator is doing make rsponse under the hood
+#     if matching_bike is None:
+#         response_str = f"Bike with id '{bike_id}' was not found in database"
+#         abort(make_response(jsonify({"message":response_str}), 404)) #jsonify is just taking something and converting it into JSON. Make response can be sometihng much larger- returning something under a decorator is doing make rsponse under the hood
 
-    return matching_bike
+#     return matching_bike
     # #looping through data to find a bike with matching bike_id
     # #if found: return that bike's data with 200 response code
     # for bike in bikes:
@@ -56,6 +56,25 @@ def get_one_bike_or_abort(bike_id):
 #     Bike(2, "Auberon", 2000, 52, "electonic")
 #]
 
+#could go ahead and put helper fxns like this one in it's own file
+#better to store this in a separate file since we may use it for classes other than Bike
+def get_one_obj_or_abort(cls, obj_id):
+    try:
+        obj_id = int(obj_id)
+    except ValueError:
+        response_str = f"Invalid ID: `{obj_id}`. ID must be an integer"
+        #want to raise abort here instead of the return value. Abort needs to be imported
+        abort(make_response(jsonify({"message":response_str}), 400))
+    #     return jsonify({"message": response_str}), 400
+    # #after the try-except: bike_id will be a valid int
+    matching_obj = cls.query.get(obj_id) #returns None if no matching bike_id
+
+    if matching_obj is None:
+        response_str = f"{cls.__name__} '{obj_id}' was not found in database"
+        abort(make_response(jsonify({"message":response_str}), 404)) #jsonify is just taking something and converting it into JSON. Make response can be sometihng much larger- returning something under a decorator is doing make rsponse under the hood
+
+    return matching_obj
+
 @bike_bp.route("", methods=["GET"])
 def get_all_bikes():
     name_param = request.args.get("name")  #request.args is a dict that has all the... attributes?
@@ -65,31 +84,32 @@ def get_all_bikes():
     else:
         bikes = Bike.query.filter_by(name=name_param) #filter_by --> only bikes that fit this condition
 
-    response = []
-    for bike in bikes:
-        bike_dict = {
-            "id": bike.id,
-            "name": bike.name,
-            "price": bike.price,
-            "size": bike.size,
-            "type": bike.type
-        }
-        response.append(bike_dict)
+    # response = []
+    # for bike in bikes:
+    #     bike_dict = bike.to_dict() #{
+    #     #     "id": bike.id,
+    #     #     "name": bike.name,
+    #     #     "price": bike.price,
+    #     #     "size": bike.size,
+    #     #     "type": bike.type
+    #     # }
+    #     response.append(bike_dict)
+    response = [bike.to_dict() for bike in bikes]
     return jsonify(response), 200 #abort: 
     
 
 
 @bike_bp.route("/<bike_id>", methods=["GET"])
 def get_one_bike(bike_id):
-    chosen_bike = get_one_bike_or_abort(bike_id)
+    chosen_bike = get_one_obj_or_abort(Bike, bike_id)
 
-    bike_dict = {
-            "id": chosen_bike.id,
-            "name": chosen_bike.name,
-            "price": chosen_bike.price,
-            "size": chosen_bike.size,
-            "type": chosen_bike.type
-        }
+    bike_dict = chosen_bike.to_dict() #{
+        #     "id": chosen_bike.id,
+        #     "name": chosen_bike.name,
+        #     "price": chosen_bike.price,
+        #     "size": chosen_bike.size,
+        #     "type": chosen_bike.type
+        # }
 
     return jsonify(bike_dict), 200 #.to_dict() changes variable into a dictionary format. ???Jsonify only works on dicts????
 
@@ -97,12 +117,12 @@ def get_one_bike(bike_id):
 def add_bike():
     request_body = request.get_json()
 
-    new_bike = Bike(
-        name=request_body["name"],
-        price=request_body["price"],
-        size=request_body["size"],
-        type=request_body["type"]
-    )
+    new_bike = Bike.from_dict(request_body) #Bike(
+    #     name=request_body["name"],
+    #     price=request_body["price"],
+    #     size=request_body["size"],
+    #     type=request_body["type"]
+    # )
         
         
     db.session.add(new_bike) 
@@ -112,7 +132,7 @@ def add_bike():
 
 @bike_bp.route("/<bike_id>", methods=["PUT"])
 def update_bike_with_new_vals(bike_id):
-    chosen_bike = get_one_bike_or_abort(bike_id)
+    chosen_bike = get_one_obj_or_abort(Bike, bike_id)
 
     request_body = request.get_json()
 
@@ -133,7 +153,7 @@ def update_bike_with_new_vals(bike_id):
 
 @bike_bp.route("/<bike_id>", methods=["DELETE"])
 def delete_one_bike(bike_id):
-    chosen_bike = get_one_bike_or_abort(bike_id)
+    chosen_bike = get_one_obj_or_abort(Bike, bike_id)
 
     db.session.delete(chosen_bike)
     db.session.commit()
