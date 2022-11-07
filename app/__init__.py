@@ -20,12 +20,14 @@ def create_app(testing=None): #add the parameter to be able to change whether we
     else:
         app.config["SQLALCHEMY_DATABASE_URI"] = os.environ.get("SQLALCHEMY_TEST_DATABASE_URI")
 
-    from app.models.bike import Bike #importing the Bike class/model from app.models.bike #needs to come before the next two lines
+    from app.models.bike import Bike #importing the Bike class/model from app.models.bike #needs to come before the next two lines #later on Jerica said not sure why we added this line
 
     db.init_app(app) #where we connect our DB to our application. init_app is the connector
     migrate.init_app(app, db) #tool to set up our DB
 
     from .routes.bike import bike_bp
     app.register_blueprint(bike_bp)
+    from .routes.cyclist import cyclist_bp
+    app.register_blueprint(cyclist_bp)
 
     return app
